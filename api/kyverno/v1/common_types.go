@@ -254,8 +254,36 @@ type ServiceCall struct {
 
 	// CABundle is a PEM encoded CA bundle which will be used to validate
 	// the server certificate.
+	// Exactly one of CABundle or CABundleFrom may be specified.
 	// +kubebuilder:validation:Optional
-	CABundle string `json:"caBundle"`
+	CABundle string `json:"caBundle,omitempty"`
+
+	// CABundleFrom is a reference to a Secret or ConfigMap containing the CA bundle whcih allows referencing CA bundles without hardcoding them.
+	CABundleFrom *ValueSource `json:"caBundleFrom,omitempty"`
+}
+
+// validate implements programmatic validation for ServiceCall
+func (s *ServiceCall) Validate(path *field.Path) field.ErrorList {
+	var errs field.ErrorList
+
+	if s.URL == "" {
+		errs = append(errs, field.Required(path.Child("url"), "service URL is required"))
+	}
+
+	for i, header := range s.Headers {
+		errs = append(errs, header.Validate(path.Child("headers").Index(i))...)
+	}
+
+	if s.CABundle != "" && s.CABundleFrom != nil {
+		errs = append(errs, field.Invalid(path, s,
+			"exactly one of caBundle or caBundleFrom can be specified"))
+	}
+
+	if s.CABundleFrom != nil {
+		errs = append(errs, s.CABundleFrom.Validate(path.Child("caBundleFrom"))...)
+	}
+
+	return errs
 }
 
 // Method is a HTTP request type.
@@ -275,7 +303,34 @@ type HTTPHeader struct {
 	// Key is the header key
 	Key string `json:"key"`
 	// Value is the header value
-	Value string `json:"value"`
+	Value string `json:"value,omitempty"`
+	// ValueFrom is a reference to a Secret or ConfigMap key containing the header value.
+	ValueFrom *ValueSource `json:"valueFrom,omitempty"`
+}
+
+// Validate implements programmatic validation for HTTPHeader
+func (h *HTTPHeader) Validate(path *field.Path) field.ErrorList {
+	var errs field.ErrorList
+
+	if h.Key == "" {
+		errs = append(errs, field.Required(path.Child("key"), "header key is required"))
+	}
+
+	// exactly one of Value or ValueFrom must be set
+	if h.Value != "" && h.ValueFrom != nil {
+		errs = append(errs, field.Invalid(path, h,
+			"exactly one of value or valueFrom must be specified"))
+	}
+	if h.Value == "" && h.ValueFrom == nil {
+		errs = append(errs, field.Required(path,
+			"either value or valueFrom must be specified"))
+	}
+
+	if h.ValueFrom != nil {
+		errs = append(errs, h.ValueFrom.Validate(path.Child("valueFrom"))...)
+	}
+
+	return errs
 }
 
 // Condition defines variable-based conditional criteria for rule execution.

@@ -12,6 +12,7 @@ import (
 	kyvernov2beta1 "github.com/kyverno/kyverno/api/kyverno/v2beta1"
 	"github.com/kyverno/kyverno/pkg/client/clientset/versioned"
 	kyvernov2beta1listers "github.com/kyverno/kyverno/pkg/client/listers/kyverno/v2beta1"
+	"github.com/kyverno/kyverno/pkg/config"
 	"github.com/kyverno/kyverno/pkg/engine/apicall"
 	"github.com/kyverno/kyverno/pkg/engine/jmespath"
 	"github.com/kyverno/kyverno/pkg/event"
@@ -21,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -37,6 +39,7 @@ func New(
 	gce *kyvernov2beta1.GlobalContextEntry,
 	eventGen event.Interface,
 	kyvernoClient versioned.Interface,
+	kubeClient kubernetes.Interface,
 	gceLister kyvernov2beta1listers.GlobalContextEntryLister,
 	logger logr.Logger,
 	client apicall.ClientInterface,
@@ -74,8 +77,9 @@ func New(
 	}
 
 	group.StartWithContext(ctx, func(ctx context.Context) {
-		config := apicall.NewAPICallConfiguration(maxResponseLength)
-		caller := apicall.NewExecutor(logger, "globalcontext", client, config)
+		apiCallConfig := apicall.NewAPICallConfiguration(maxResponseLength)
+		valueResolver := apicall.NewValueResolver(kubeClient, config.KyvernoNamespace())
+		caller := apicall.NewExecutor(logger, "globalcontext", client, apiCallConfig, valueResolver)
 
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
 			if data, err := doCall(ctx, caller, call, gce.Spec.APICall.RetryLimit); err != nil {

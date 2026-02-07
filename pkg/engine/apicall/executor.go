@@ -22,10 +22,11 @@ type Executor interface {
 }
 
 type executor struct {
-	logger logr.Logger
-	name   string
-	client ClientInterface
-	config APICallConfiguration
+	logger        logr.Logger
+	name          string
+	client        ClientInterface
+	config        APICallConfiguration
+	valueResolver ValueResolver
 }
 
 func NewExecutor(
@@ -33,12 +34,14 @@ func NewExecutor(
 	name string,
 	client ClientInterface,
 	apiCallConfig APICallConfiguration,
+	valueResolver ValueResolver,
 ) *executor {
 	return &executor{
-		logger: logger,
-		name:   name,
-		client: client,
-		config: apiCallConfig,
+		logger:        logger,
+		name:          name,
+		client:        client,
+		config:        apiCallConfig,
+		valueResolver: valueResolver,
 	}
 }
 
@@ -67,7 +70,7 @@ func (a *executor) executeServiceCall(ctx context.Context, apiCall *kyvernov1.AP
 		return nil, fmt.Errorf("missing service for APICall %s", a.name)
 	}
 
-	client, err := a.buildHTTPClient(apiCall.Service)
+	client, err := a.buildHTTPClient(ctx, apiCall.Service)
 	if err != nil {
 		return nil, err
 	}
@@ -133,16 +136,33 @@ func (a *executor) buildHTTPRequest(ctx context.Context, apiCall *kyvernov1.APIC
 		return nil, fmt.Errorf("failed to build request for APICall %s: %w", a.name, err)
 	}
 
-	if err := a.addHTTPHeaders(req, apiCall.Service.Headers); err != nil {
+	if err := a.addHTTPHeaders(ctx, req, apiCall.Service.Headers); err != nil {
 		return nil, fmt.Errorf("failed to add headers for APICall %s: %w", a.name, err)
 	}
 
 	return req, nil
 }
 
-func (a *executor) addHTTPHeaders(req *http.Request, headers []kyvernov1.HTTPHeader) error {
+func (a *executor) addHTTPHeaders(ctx context.Context, req *http.Request, headers []kyvernov1.HTTPHeader) error {
 	for _, header := range headers {
-		req.Header.Add(header.Key, header.Value)
+		var value string
+		var err error
+
+		// Resolve value from Secret/ConfigMap if valueFrom is specified
+		if header.ValueFrom != nil {
+			if a.valueResolver != nil {
+				value, err = a.valueResolver.ResolveValue(ctx, header.ValueFrom)
+				if err != nil {
+					return fmt.Errorf("failed to resolve header %s: %w", header.Key, err)
+				}
+			} else {
+				return fmt.Errorf("valueResolver is required to resolve header %s from reference", header.Key)
+			}
+		} else {
+			value = header.Value
+		}
+
+		req.Header.Add(header.Key, value)
 	}
 
 	if req.Header.Get("Authorization") == "" {
@@ -166,12 +186,30 @@ func (a *executor) getToken() string {
 	return string(b)
 }
 
-func (a *executor) buildHTTPClient(service *kyvernov1.ServiceCall) (*http.Client, error) {
-	if service == nil || service.CABundle == "" {
+func (a *executor) buildHTTPClient(ctx context.Context, service *kyvernov1.ServiceCall) (*http.Client, error) {
+	var caBundle string
+	var err error
+
+	// Resolve CA bundle from Secret/ConfigMap if caBundleFrom is specified
+	if service.CABundleFrom != nil {
+		if a.valueResolver != nil {
+			caBundle, err = a.valueResolver.ResolveValue(ctx, service.CABundleFrom)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve CA bundle: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("valueResolver is required to resolve CA bundle from reference")
+		}
+	} else {
+		caBundle = service.CABundle
+	}
+
+	if service == nil || caBundle == "" {
 		return http.DefaultClient, nil
 	}
+
 	caCertPool := x509.NewCertPool()
-	if ok := caCertPool.AppendCertsFromPEM([]byte(service.CABundle)); !ok {
+	if ok := caCertPool.AppendCertsFromPEM([]byte(caBundle)); !ok {
 		return nil, fmt.Errorf("failed to parse PEM CA bundle for APICall %s", a.name)
 	}
 	transport := &http.Transport{

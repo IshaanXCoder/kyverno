@@ -164,6 +164,7 @@ func (c *controller) makeStoreEntry(ctx context.Context, gce *kyvernov2beta1.Glo
 		gce,
 		c.eventGen,
 		c.kyvernoClient,
+		c.kubeClient,
 		c.gceLister,
 		logger,
 		adapters.Client(c.dclient),

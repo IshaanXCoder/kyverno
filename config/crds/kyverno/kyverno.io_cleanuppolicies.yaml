@@ -217,7 +217,55 @@ spec:
                               description: |-
                                 CABundle is a PEM encoded CA bundle which will be used to validate
                                 the server certificate.
+                                Exactly one of CABundle or CABundleFrom may be specified.
                               type: string
+                            caBundleFrom:
+                              description: |-
+                                CABundleFrom is a reference to a Secret or ConfigMap containing the CA bundle.
+                                This allows referencing CA bundles without hardcoding them.
+                                Exactly one of CABundle or CABundleFrom may be specified.
+                              properties:
+                                configMapKeyRef:
+                                  description: ConfigMapKeyRef selects a key from
+                                    a ConfigMap.
+                                  properties:
+                                    key:
+                                      description: Key within the ConfigMap to select.
+                                      type: string
+                                    name:
+                                      description: Name of the ConfigMap.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the ConfigMap. If
+                                        empty, defaults to the Kyverno namespace.
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                                secretKeyRef:
+                                  description: SecretKeyRef selects a key from a Secret.
+                                  properties:
+                                    key:
+                                      description: Key within the Secret to select.
+                                      type: string
+                                    name:
+                                      description: Name of the Secret.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the Secret. If empty,
+                                        defaults to the Kyverno namespace.
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              type: object
+                              x-kubernetes-validations:
+                              - message: exactly one of secretKeyRef or configMapKeyRef
+                                  must be specified
+                                rule: (has(self.secretKeyRef) || has(self.configMapKeyRef))
+                                  && !(has(self.secretKeyRef) && has(self.configMapKeyRef))
                             headers:
                               description: Headers is a list of optional HTTP headers
                                 to be included in the request.
@@ -227,11 +275,62 @@ spec:
                                     description: Key is the header key
                                     type: string
                                   value:
-                                    description: Value is the header value
+                                    description: |-
+                                      Value is the header value
+                                      Exactly one of Value or ValueFrom must be specified.
                                     type: string
+                                  valueFrom:
+                                    description: |-
+                                      ValueFrom is a reference to a Secret or ConfigMap key containing the header value.
+                                      This allows referencing sensitive values without hardcoding them.
+                                      Exactly one of Value or ValueFrom must be specified.
+                                    properties:
+                                      configMapKeyRef:
+                                        description: ConfigMapKeyRef selects a key
+                                          from a ConfigMap.
+                                        properties:
+                                          key:
+                                            description: Key within the ConfigMap
+                                              to select.
+                                            type: string
+                                          name:
+                                            description: Name of the ConfigMap.
+                                            type: string
+                                          namespace:
+                                            description: Namespace of the ConfigMap.
+                                              If empty, defaults to the Kyverno namespace.
+                                            type: string
+                                        required:
+                                        - key
+                                        - name
+                                        type: object
+                                      secretKeyRef:
+                                        description: SecretKeyRef selects a key from
+                                          a Secret.
+                                        properties:
+                                          key:
+                                            description: Key within the Secret to
+                                              select.
+                                            type: string
+                                          name:
+                                            description: Name of the Secret.
+                                            type: string
+                                          namespace:
+                                            description: Namespace of the Secret.
+                                              If empty, defaults to the Kyverno namespace.
+                                            type: string
+                                        required:
+                                        - key
+                                        - name
+                                        type: object
+                                    type: object
+                                    x-kubernetes-validations:
+                                    - message: exactly one of secretKeyRef or configMapKeyRef
+                                        must be specified
+                                      rule: (has(self.secretKeyRef) || has(self.configMapKeyRef))
+                                        && !(has(self.secretKeyRef) && has(self.configMapKeyRef))
                                 required:
                                 - key
-                                - value
                                 type: object
                               type: array
                             url:
@@ -1510,7 +1609,55 @@ spec:
                               description: |-
                                 CABundle is a PEM encoded CA bundle which will be used to validate
                                 the server certificate.
+                                Exactly one of CABundle or CABundleFrom may be specified.
                               type: string
+                            caBundleFrom:
+                              description: |-
+                                CABundleFrom is a reference to a Secret or ConfigMap containing the CA bundle.
+                                This allows referencing CA bundles without hardcoding them.
+                                Exactly one of CABundle or CABundleFrom may be specified.
+                              properties:
+                                configMapKeyRef:
+                                  description: ConfigMapKeyRef selects a key from
+                                    a ConfigMap.
+                                  properties:
+                                    key:
+                                      description: Key within the ConfigMap to select.
+                                      type: string
+                                    name:
+                                      description: Name of the ConfigMap.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the ConfigMap. If
+                                        empty, defaults to the Kyverno namespace.
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                                secretKeyRef:
+                                  description: SecretKeyRef selects a key from a Secret.
+                                  properties:
+                                    key:
+                                      description: Key within the Secret to select.
+                                      type: string
+                                    name:
+                                      description: Name of the Secret.
+                                      type: string
+                                    namespace:
+                                      description: Namespace of the Secret. If empty,
+                                        defaults to the Kyverno namespace.
+                                      type: string
+                                  required:
+                                  - key
+                                  - name
+                                  type: object
+                              type: object
+                              x-kubernetes-validations:
+                              - message: exactly one of secretKeyRef or configMapKeyRef
+                                  must be specified
+                                rule: (has(self.secretKeyRef) || has(self.configMapKeyRef))
+                                  && !(has(self.secretKeyRef) && has(self.configMapKeyRef))
                             headers:
                               description: Headers is a list of optional HTTP headers
                                 to be included in the request.
@@ -1520,11 +1667,62 @@ spec:
                                     description: Key is the header key
                                     type: string
                                   value:
-                                    description: Value is the header value
+                                    description: |-
+                                      Value is the header value
+                                      Exactly one of Value or ValueFrom must be specified.
                                     type: string
+                                  valueFrom:
+                                    description: |-
+                                      ValueFrom is a reference to a Secret or ConfigMap key containing the header value.
+                                      This allows referencing sensitive values without hardcoding them.
+                                      Exactly one of Value or ValueFrom must be specified.
+                                    properties:
+                                      configMapKeyRef:
+                                        description: ConfigMapKeyRef selects a key
+                                          from a ConfigMap.
+                                        properties:
+                                          key:
+                                            description: Key within the ConfigMap
+                                              to select.
+                                            type: string
+                                          name:
+                                            description: Name of the ConfigMap.
+                                            type: string
+                                          namespace:
+                                            description: Namespace of the ConfigMap.
+                                              If empty, defaults to the Kyverno namespace.
+                                            type: string
+                                        required:
+                                        - key
+                                        - name
+                                        type: object
+                                      secretKeyRef:
+                                        description: SecretKeyRef selects a key from
+                                          a Secret.
+                                        properties:
+                                          key:
+                                            description: Key within the Secret to
+                                              select.
+                                            type: string
+                                          name:
+                                            description: Name of the Secret.
+                                            type: string
+                                          namespace:
+                                            description: Namespace of the Secret.
+                                              If empty, defaults to the Kyverno namespace.
+                                            type: string
+                                        required:
+                                        - key
+                                        - name
+                                        type: object
+                                    type: object
+                                    x-kubernetes-validations:
+                                    - message: exactly one of secretKeyRef or configMapKeyRef
+                                        must be specified
+                                      rule: (has(self.secretKeyRef) || has(self.configMapKeyRef))
+                                        && !(has(self.secretKeyRef) && has(self.configMapKeyRef))
                                 required:
                                 - key
-                                - value
                                 type: object
                               type: array
                             url:
